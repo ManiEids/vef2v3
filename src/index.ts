@@ -141,15 +141,13 @@ app.get('/questions/category/:slug', async (c) => {
   }
 });
 
-export default app;
-
 // Simplify server startup - Hardcode port to avoid process.env issues
 const port = 3000;
-// Only start server if this file is run directly (not imported)
-if (import.meta.url === `file://${process.argv[1]}`) {
-  console.log(`Server is running on port ${port}`);
-  serve({
-    fetch: app.fetch,
-    port,
-  });
-}
+// Always start the server, no conditional check
+console.log(`Server is running on port ${port}`);
+serve({
+  fetch: app.fetch,
+  port,
+});
+
+export default app;
