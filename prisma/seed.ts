@@ -5,15 +5,20 @@ import path from 'path';
 // Initialize Prisma Client
 const prisma = new PrismaClient();
 
+interface Question {
+  question: string;
+  answers: { answer: string; correct: boolean }[];
+}
+
 async function main() {
   console.log("🔄 Seeding process started...");
 
-  // Path to the data folder
   const dataDir = './data';
 
   try {
-    // Read the index.json file
-    const categoriesData = JSON.parse(await fs.readFile(`${dataDir}/index.json`, 'utf-8'));
+    const categoriesData: { title: string; file: string; slug?: string }[] = JSON.parse(
+      await fs.readFile(`${dataDir}/index.json`, 'utf-8')
+    );
     console.log("✅ Read index.json:", categoriesData);
 
     for (const { title, file, slug } of categoriesData) {
@@ -22,10 +27,8 @@ async function main() {
         continue;
       }
 
-      // If slug is missing, generate one from the title
       const categorySlug = slug || title.toLowerCase().replace(/\s+/g, '-');
 
-      // Check if the data file exists
       const filePath = path.join(dataDir, file);
       try {
         await fs.access(filePath);
@@ -34,27 +37,28 @@ async function main() {
         continue;
       }
 
-      // Read the category file
-      const categoryData = JSON.parse(await fs.readFile(filePath, 'utf-8'));
+      const categoryData: { questions: Question[] } = JSON.parse(
+        await fs.readFile(filePath, 'utf-8')
+      );
+
       if (!Array.isArray(categoryData.questions)) {
         console.warn(`⚠️ Skipping category due to missing/invalid questions: ${title}`);
         continue;
       }
 
-      // Insert category and its questions into the database
       const category = await prisma.category.create({
         data: {
           slug: categorySlug,
           title,
           questions: {
             create: categoryData.questions
-              .filter(q => q.question) // Ensure question exists
-              .map(q => ({
+              .filter((q: Question) => q.question) // Ensure question exists
+              .map((q: Question) => ({
                 question: q.question,
                 answers: {
-                  create: (Array.isArray(q.answers) ? q.answers : []) // Ensure answers are an array
-                    .filter(a => a.answer) // Ensure answer text exists
-                    .map(a => ({
+                  create: (Array.isArray(q.answers) ? q.answers : [])
+                    .filter((a: { answer: string; correct: boolean }) => a.answer)
+                    .map((a: { answer: string; correct: boolean }) => ({
                       answer: a.answer,
                       correct: Boolean(a.correct),
                     })),
@@ -75,5 +79,4 @@ async function main() {
   }
 }
 
-// Run the script
 main();
