@@ -5,16 +5,16 @@ import { PrismaClient } from '@prisma/client';
 import { serve } from '@hono/node-server';
 import xss from 'xss';
 
-// Initialize Prisma client
+// Gagna tenging
 const prisma = new PrismaClient();
 
-// Initialize Hono app
+// Hono app
 const app = new Hono();
 
-// Add middleware
+// Middleware
 app.use('*', logger());
 
-// Define schemas for validation
+// Skilgreiningar
 const categorySchema = z.object({
   title: z.string().min(1),
   slug: z.string().min(1).optional(),
@@ -31,10 +31,10 @@ const questionSchema = z.object({
   answers: z.array(answerSchema),
 });
 
-// Sanitize input to prevent XSS
+// XSS vörn
 const sanitize = (input: string): string => xss(input);
 
-// Root route to show project status
+// Forsíða
 app.get('/', (c) => {
   return c.html(`
     <html>
@@ -51,26 +51,26 @@ app.get('/', (c) => {
       </head>
       <body>
         <h1>Quiz API</h1>
-        <p class="success">✅ Server is running!</p>
-        <h2>Available Endpoints:</h2>
+        <p class="success">✅ Þjónn keyrandi!</p>
+        <h2>Endapunktar:</h2>
         <ul>
-          <li><code>GET /categories</code> - List all categories</li>
-          <li><code>GET /categories/:slug</code> - Get details for a specific category</li>
-          <li><code>POST /category</code> - Create a new category</li>
-          <li><code>PATCH /category/:slug</code> - Update a category</li>
-          <li><code>DELETE /category/:slug</code> - Delete a category</li>
-          <li><code>GET /questions</code> - List all questions</li>
-          <li><code>GET /questions/category/:slug</code> - Get questions for a specific category</li>
-          <li><code>POST /question</code> - Create a new question</li>
-          <li><code>PATCH /question/:id</code> - Update a question</li>
-          <li><code>DELETE /question/:id</code> - Delete a question</li>
+          <li><code>GET /categories</code> - Allir flokkar</li>
+          <li><code>GET /categories/:slug</code> - Sækja flokk</li>
+          <li><code>POST /category</code> - Búa til flokk</li>
+          <li><code>PATCH /category/:slug</code> - Uppfæra flokk</li>
+          <li><code>DELETE /category/:slug</code> - Eyða flokki</li>
+          <li><code>GET /questions</code> - Allar spurningar</li>
+          <li><code>GET /questions/category/:slug</code> - Spurningar í flokk</li>
+          <li><code>POST /question</code> - Búa til spurningu</li>
+          <li><code>PATCH /question/:id</code> - Uppfæra spurningu</li>
+          <li><code>DELETE /question/:id</code> - Eyða spurningu</li>
         </ul>
       </body>
     </html>
   `);
 });
 
-// Category routes
+// Flokkar
 app.get('/categories', async (c) => {
   try {
     const categories = await prisma.category.findMany();
@@ -116,7 +116,7 @@ app.post('/category', async (c) => {
     }
 
     const { title } = result.data;
-    // Generate slug if not provided
+    // Búa til slug
     const slug = result.data.slug || title.toLowerCase().replace(/\s+/g, '-');
 
     const category = await prisma.category.create({
@@ -143,7 +143,7 @@ app.patch('/category/:slug', async (c) => {
       return c.json({ error: 'Invalid data', details: result.error.format() }, 400);
     }
 
-    // Sanitize inputs
+    // Hreinsa gögn
     const data = {};
     if (result.data.title) {
       data['title'] = sanitize(result.data.title);
@@ -174,7 +174,7 @@ app.delete('/category/:slug', async (c) => {
   try {
     const { slug } = c.req.param();
     
-    // Find the category first
+    // Finna flokk
     const category = await prisma.category.findUnique({
       where: { slug },
       include: { 
@@ -186,19 +186,19 @@ app.delete('/category/:slug', async (c) => {
       return c.json({ error: 'Category not found' }, 404);
     }
 
-    // Delete all answers for all questions in this category
+    // Eyða svörum
     for (const question of category.questions) {
       await prisma.answer.deleteMany({
         where: { questionId: question.id }
       });
     }
 
-    // Delete all questions in the category
+    // Eyða spurningum
     await prisma.question.deleteMany({
       where: { categoryId: category.id }
     });
 
-    // Delete the category itself
+    // Eyða flokki
     await prisma.category.delete({
       where: { slug }
     });
@@ -210,7 +210,7 @@ app.delete('/category/:slug', async (c) => {
   }
 });
 
-// Question routes
+// Spurningar
 app.get('/questions', async (c) => {
   try {
     const questions = await prisma.question.findMany({
@@ -262,7 +262,7 @@ app.post('/question', async (c) => {
 
     const { question, categoryId, answers } = result.data;
 
-    // Verify category exists
+    // Athuga flokk
     const category = await prisma.category.findUnique({
       where: { id: categoryId },
     });
@@ -271,7 +271,7 @@ app.post('/question', async (c) => {
       return c.json({ error: 'Category not found' }, 400);
     }
 
-    // Create question with answers
+    // Búa til spurningu
     const newQuestion = await prisma.question.create({
       data: {
         question: sanitize(question),
@@ -309,7 +309,7 @@ app.patch('/question/:id', async (c) => {
       return c.json({ error: 'Invalid data', details: result.error.format() }, 400);
     }
 
-    // Extract validated data
+    // Sía gögn
     const { question, categoryId } = result.data;
     const data = {};
 
@@ -318,7 +318,7 @@ app.patch('/question/:id', async (c) => {
     }
 
     if (categoryId) {
-      // Verify category exists
+      // Athuga flokk
       const categoryExists = await prisma.category.findUnique({
         where: { id: categoryId },
       });
@@ -360,7 +360,7 @@ app.delete('/question/:id', async (c) => {
     }
 
     try {
-      // First delete all associated answers
+      // Eyða svörum
       await prisma.answer.deleteMany({
         where: { questionId: id },
       });
@@ -384,9 +384,8 @@ app.delete('/question/:id', async (c) => {
 
 export default app;
 
-// Simplify server startup - Hardcode port to avoid process.env issues
+// Keyra þjón
 const port = 3000;
-// Always start the server
 console.log(`Server is running on port ${port}`);
 serve({
   fetch: app.fetch,

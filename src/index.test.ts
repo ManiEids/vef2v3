@@ -1,2 +1,2 @@
-// Simple placeholder test file to make the build pass
+// Einfalt próf
 console.log('App is importable');

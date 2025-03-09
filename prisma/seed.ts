@@ -1,13 +1,13 @@
 import { PrismaClient } from '@prisma/client';
 
-// Initialize Prisma client
+// Gagnagrunnstenging
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🔄 Minimal seed process started...");
+  console.log("🔄 Sáning hafin...");
   
   try {
-    // Create a single test category
+    // Búa til flokk
     const category = await prisma.category.create({
       data: {
         slug: 'test-category',
@@ -15,9 +15,9 @@ async function main() {
       },
     });
     
-    console.log(`✅ Created test category with ID: ${category.id}`);
+    console.log(`✅ Flokkur búinn til: ${category.id}`);
     
-    // Create a test question
+    // Búa til spurningu
     const question = await prisma.question.create({
       data: {
         question: 'This is a test question?',
@@ -25,9 +25,9 @@ async function main() {
       },
     });
     
-    console.log(`✅ Created test question with ID: ${question.id}`);
+    console.log(`✅ Spurning búin til: ${question.id}`);
     
-    // Create test answers
+    // Búa til svör
     await prisma.answer.create({
       data: {
         answer: 'Correct answer',
@@ -44,24 +44,24 @@ async function main() {
       },
     });
     
-    console.log("🎉 Test data seeded successfully!");
+    console.log("🎉 Sáning tókst!");
   } catch (error) {
-    console.error("❌ Seeding failed:", error);
-    return 1; // Error code
+    console.error("❌ Villa:", error);
+    return 1; // Villa
   } finally {
     await prisma.$disconnect();
   }
   
-  return 0; // Success code
+  return 0; // OK
 }
 
-// Run the seeding script
+// Keyra
 main()
   .then((code) => {
     if (code !== 0) {
-      console.error("Seed script failed");
+      console.error("Sáning mistókst");
     }
   })
   .catch((error) => {
-    console.error("Unhandled error:", error);
+    console.error("Villa:", error);
   });

@@ -1,15 +1,15 @@
 import { PrismaClient } from '@prisma/client';
 
-// Initialize Prisma client
+// Gagnagrunns tenging
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🔄 Remote seeding disabled for stability");
-  console.log("✅ Please use direct database management instead");
+  console.log("🔄 Fjarstýrð sáning óvirk");
+  console.log("✅ Notaðu gagnagrunnsviðmót beint");
   
-  // Just disconnect and exit
+  // Aftengja
   await prisma.$disconnect();
 }
 
-// Run the simplified script 
+// Keyra
 main().catch(console.error);
