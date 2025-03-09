@@ -1,12 +1,12 @@
 import { PrismaClient } from '@prisma/client';
-import fs from 'node:fs/promises';
-import path from 'node:path';
+import fs from 'fs/promises';
+import path from 'path';
 
 const prisma = new PrismaClient();
 
 interface CategoryData {
   title: string;
-  questions: QuestionData[];
+  questions: QuestionData[]; 
 }
 
 interface QuestionData {
@@ -19,7 +19,12 @@ interface AnswerData {
   correct: boolean;
 }
 
-async function main() {
+const exitWithError = (): void => {
+  console.error('Exiting with error');
+  // Process will exit with code 1 after the script finishes
+};
+
+async function main(): Promise<void> {
   console.log("🔄 Seeding process started...");
 
   // Get absolute path to data directory
@@ -32,8 +37,9 @@ async function main() {
     console.log(`📄 Reading index file: ${indexPath}`);
     categories = JSON.parse(await fs.readFile(indexPath, 'utf-8'));
   } catch (error) {
-    console.error(`❌ Failed to read or parse index.json: ${(error as any).message}`);
-    process.exit(1);
+    console.error(`❌ Failed to read or parse index.json: ${(error as Error).message}`);
+    exitWithError();
+    return;
   }
 
   for (const { title, file } of categories) {
@@ -51,7 +57,7 @@ async function main() {
       console.log(`📄 Reading file: ${filePath}`);
       categoryData = JSON.parse(await fs.readFile(filePath, 'utf-8'));
     } catch (error) {
-      console.error(`❌ Failed to read or parse ${file}: ${(error as any).message}`);
+      console.error(`❌ Failed to read or parse ${file}: ${(error as Error).message}`);
       continue;
     }
 
@@ -62,50 +68,57 @@ async function main() {
 
     let category;
     try {
-      category = await prisma.category.create({
-        data: {
+      // Changed from create to upsert to handle existing categories
+      category = await prisma.category.upsert({
+        where: { slug },
+        update: { title }, // Update title if category exists
+        create: {
           slug,
           title,
         },
       });
-      console.log(`✅ Created category: ${title} with ID ${category.id}`);
+      console.log(`✅ Category upserted: ${title} with ID ${category.id}`);
     } catch (error) {
-      console.error(`❌ Failed to create category ${title}: ${(error as any).message}`);
+      console.error(`❌ Failed to process category ${title}: ${(error as Error).message}`);
       continue;
     }
 
-    for (const q of categoryData.questions as QuestionData[]) {
-      if (!q.question) {
-        console.warn(`⚠️ Skipping question without text`);
+    // Process questions for this category
+    for (const q of categoryData.questions) {
+      if (!q.question || !Array.isArray(q.answers)) {
+        console.warn(`⚠️ Skipping invalid question in category ${title}`);
         continue;
       }
       
-      let question;
       try {
-        question = await prisma.question.create({
+        // Check if question already exists (approximate matching by text and category)
+        const existingQuestion = await prisma.question.findFirst({
+          where: {
+            question: q.question,
+            categoryId: category.id,
+          },
+        });
+
+        if (existingQuestion) {
+          console.log(`⏩ Question already exists: "${q.question.substring(0, 30)}..."`);
+          continue; // Skip to avoid duplicate questions
+        }
+
+        const question = await prisma.question.create({
           data: {
             question: q.question,
             categoryId: category.id,
           },
         });
         console.log(`✅ Created question: "${q.question.substring(0, 30)}..." with ID ${question.id}`);
-      } catch (error) {
-        console.error(`❌ Failed to create question: ${(error as any).message}`);
-        continue;
-      }
 
-      if (!Array.isArray(q.answers)) {
-        console.warn(`⚠️ No valid answers for question: ${q.question.substring(0, 30)}...`);
-        continue;
-      }
-
-      for (const a of q.answers) {
-        if (!a || typeof a.answer !== 'string' || typeof a.correct !== 'boolean') {
-          console.warn(`⚠️ Skipping invalid answer`);
-          continue;
-        }
-        
-        try {
+        // Process answers for this question
+        for (const a of q.answers) {
+          if (!a || typeof a.answer !== 'string' || typeof a.correct !== 'boolean') {
+            console.warn(`⚠️ Skipping invalid answer for question ID ${question.id}`);
+            continue;
+          }
+          
           await prisma.answer.create({
             data: {
               answer: a.answer,
@@ -114,9 +127,9 @@ async function main() {
             },
           });
           console.log(`✅ Created answer: "${a.answer.substring(0, 30)}..."`);
-        } catch (error) {
-          console.error(`❌ Failed to create answer: ${(error as any).message}`);
         }
+      } catch (error) {
+        console.error(`❌ Failed to process question: ${(error as Error).message}`);
       }
     }
   }
@@ -126,9 +139,10 @@ async function main() {
 
 // Run the seeding script
 main()
-  .catch((error) => {
-    console.error('❌ Seeding failed:', (error as any).message);
-    process.exit(1);
+  .catch((error: unknown) => {
+    console.error('❌ Seeding failed:', (error as Error).message);
+    // Using process.exitCode instead of process.exit() to allow for clean shutdown
+    process.exitCode = 1;
   })
   .finally(async () => {
     await prisma.$disconnect();

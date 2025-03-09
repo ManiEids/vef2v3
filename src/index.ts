@@ -344,40 +344,16 @@ app.delete('/question/:id', async (c) => {
   }
 });
 
-// Development-only seed endpoint (remove in production)
-if (process.env.NODE_ENV !== 'production') {
-  app.post('/_seed', async (c) => {
-    try {
-      const { exec } = await import('child_process');
-      exec('npx prisma db seed', (error, stdout, stderr) => {
-        if (error) {
-          console.error(`Seed error: ${error.message}`);
-          return;
-        }
-        if (stderr) {
-          console.error(`Seed stderr: ${stderr}`);
-          return;
-        }
-        console.log(`Seed stdout: ${stdout}`);
-      });
-      return c.json({ message: 'Seeding started in background' });
-    } catch (error) {
-      console.error('Error triggering seed:', error);
-      return c.json({ error: 'Internal Server Error' }, 500);
-    }
-  });
-}
-
 // Start server
-const port = process.env.PORT || 3000;
+const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 console.log(`Server is running on port ${port}`);
 
 export default app;
 
-// Only start server if not imported by a test file
-if (process.env.NODE_ENV !== 'test') {
+// Simplify server startup
+if (typeof process !== 'undefined') {
   serve({
     fetch: app.fetch,
-    port: Number(port),
+    port: port,
   });
 }

@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import fs from 'node:fs/promises';
+import fs from 'fs/promises';
 
 const prisma = new PrismaClient();
 
@@ -18,7 +18,12 @@ interface AnswerData {
   correct: boolean;
 }
 
-async function main() {
+const exitWithError = (): void => {
+  console.error('Exiting with error');
+  // Process will exit with code 1 after the script finishes
+};
+
+async function main(): Promise<void> {
   console.log("🔄 Seeding process started...");
 
   const dataDir = './data';
@@ -26,8 +31,9 @@ async function main() {
   try {
     categories = JSON.parse(await fs.readFile(`${dataDir}/index.json`, 'utf-8'));
   } catch (error) {
-    console.error(`❌ Failed to read or parse index.json: ${(error as any).message}`);
-    process.exit(1);
+    console.error(`❌ Failed to read or parse index.json: ${(error as Error).message}`);
+    exitWithError();
+    return;
   }
 
   for (const { title, file } of categories) {
@@ -43,7 +49,7 @@ async function main() {
     try {
       categoryData = JSON.parse(await fs.readFile(`${dataDir}/${file}`, 'utf-8'));
     } catch (error) {
-      console.error(`❌ Failed to read or parse ${file}: ${(error as any).message}`);
+      console.error(`❌ Failed to read or parse ${file}: ${(error as Error).message}`);
       continue;
     }
 
@@ -61,7 +67,7 @@ async function main() {
         },
       });
     } catch (error) {
-      console.error(`❌ Failed to create category ${title}: ${(error as any).message}`);
+      console.error(`❌ Failed to create category ${title}: ${(error as Error).message}`);
       continue;
     }
 
@@ -75,7 +81,7 @@ async function main() {
           },
         });
       } catch (error) {
-        console.error(`❌ Failed to create question ${q.question}: ${(error as any).message}`);
+        console.error(`❌ Failed to create question ${q.question}: ${(error as Error).message}`);
         continue;
       }
 
@@ -89,7 +95,7 @@ async function main() {
             },
           });
         } catch (error) {
-          console.error(`❌ Failed to create answer ${a.answer}: ${(error as any).message}`);
+          console.error(`❌ Failed to create answer ${a.answer}: ${(error as Error).message}`);
         }
       }
     }
@@ -100,9 +106,10 @@ async function main() {
 }
 
 main()
-  .catch((error) => {
-    console.error('❌ Seeding failed:', (error as any).message);
-    process.exit(1);
+  .catch((error: unknown) => {
+    console.error('❌ Seeding failed:', (error as Error).message);
+    // Using process.exitCode instead of process.exit for cleaner shutdown
+    process.exitCode = 1;
   })
   .finally(async () => {
     await prisma.$disconnect();
