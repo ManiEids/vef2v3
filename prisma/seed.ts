@@ -11,7 +11,7 @@ async function main() {
     if (!title || !file || !slug) continue;
 
     const categoryData = JSON.parse(await fs.readFile(`${dataDir}/${file}`, 'utf-8'));
-    if (!categoryData.questions) continue;
+    if (!categoryData.questions || !Array.isArray(categoryData.questions)) continue;
 
     const category = await prisma.category.create({
       data: {
@@ -23,7 +23,7 @@ async function main() {
             answers: {
               create: q.answers.map((a: any) => ({
                 answer: a.answer,
-                correct: a.correct,
+                isCorrect: a.correct, // Ensure this matches schema
               })),
             },
           })),
