@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: quiz-api
+    env: node
+    buildCommand: npm install && npm run build && npm run migrate
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: v3
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+
+databases:
+  - name: v3
+    databaseName: v3_kgvv
+    user: v3_kgvv_user

@@ -1,23 +1,29 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { app } from './index';
+import app from './index';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 beforeAll(async () => {
-  // Ensure the database is clean before tests (optional, for isolation)
- // await prisma.post.deleteMany();
+  // Clean up test database or set up test data
+  await prisma.$connect();
 });
 
 afterAll(async () => {
-  // Disconnect Prisma after tests to avoid open handles
   await prisma.$disconnect();
 });
 
-describe('POST /posts', () => {
-  it('creates a new post', async () => {
-    const payload = { title: 'Test Post', content: 'Testing content' };
-    const res = await app.request('/posts', {
+describe('Categories API', () => {
+  it('GET /categories returns an array of categories', async () => {
+    const res = await app.request('/categories');
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data)).toBe(true);
+  });
+  
+  it('POST /category creates a new category', async () => {
+    const payload = { title: 'Test Category' };
+    const res = await app.request('/category', {
       method: 'POST',
       body: JSON.stringify(payload),
       headers: { 'Content-Type': 'application/json' }
@@ -25,21 +31,15 @@ describe('POST /posts', () => {
     expect(res.status).toBe(201);
     const data = await res.json();
     expect(data.title).toBe(payload.title);
-    expect(data.content).toBe(payload.content);
-    expect(data.id).toBeDefined();
+    expect(data.slug).toBe('test-category');
   });
 });
 
-describe('GET /posts', () => {
-  it('returns an array of posts including the newly created post', async () => {
-    const res = await app.request('/posts');
+describe('Questions API', () => {
+  it('GET /questions returns an array of questions', async () => {
+    const res = await app.request('/questions');
     expect(res.status).toBe(200);
-    const posts = await res.json();
-    expect(Array.isArray(posts)).toBe(true);
-    // We should have at least one post (the one created above)
-    expect(posts.length).toBeGreaterThan(0);
-    // Verify the content of the first post
-    expect(posts[0]).toHaveProperty('id');
-    expect(posts[0]).toHaveProperty('title');
+    const data = await res.json();
+    expect(Array.isArray(data)).toBe(true);
   });
 });

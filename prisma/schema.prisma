@@ -8,18 +8,18 @@ datasource db {
 }
 
 model Category {
-  id        Int        @id @default(autoincrement())
-  slug      String     @unique
+  id        Int       @id @default(autoincrement())
+  slug      String    @unique
   title     String
   questions Question[]
 }
 
 model Question {
-  id         Int      @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   question   String
   categoryId Int
+  category   Category  @relation(fields: [categoryId], references: [id])
   answers    Answer[]
-  category   Category @relation(fields: [categoryId], references: [id])
 }
 
 model Answer {
