@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 beforeAll(async () => {
   // Ensure the database is clean before tests (optional, for isolation)
-  await prisma.post.deleteMany();
+ // await prisma.post.deleteMany();
 });
 
 afterAll(async () => {
