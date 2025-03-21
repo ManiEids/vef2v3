@@ -332,76 +332,66 @@ app.patch('/question/:id', async (c) => {
       return c.json({ error: 'Invalid data', details: result.error.format() }, 400);
     }
 
-    // Using a transaction to ensure database consistency
+    // Use a transaction to update the question and its answers atomically
     const updatedQuestion = await prisma.$transaction(async (tx) => {
-      // 1. First update the question fields
+      // Prepare question update data
       const questionData: any = {};
       if (result.data.question) {
         questionData.question = sanitize(result.data.question);
       }
       if (result.data.categoryId) {
-        const categoryExists = await tx.category.findUnique({ 
-          where: { id: result.data.categoryId } 
+        const categoryExists = await tx.category.findUnique({
+          where: { id: result.data.categoryId },
         });
         if (!categoryExists) {
           throw new Error('Category not found');
         }
         questionData.categoryId = result.data.categoryId;
       }
-      
+
       // Update basic question data
-      const updatedQuestion = await tx.question.update({
+      await tx.question.update({
         where: { id },
         data: questionData,
       });
-      
-      // 2. Handle answers update if provided
-      if (result.data.answers && Array.isArray(result.data.answers)) {
-        console.log(`🔄 Processing ${result.data.answers.length} answers for question ${id}`);
-        
-        // Delete all existing answers
-        const deletedAnswers = await tx.answer.deleteMany({
+
+      // If 'answers' is provided (even an empty array), update answers:
+      if (Object.prototype.hasOwnProperty.call(result.data, 'answers')) {
+        // Delete all existing answers for this question
+        await tx.answer.deleteMany({
           where: { questionId: id },
         });
-        console.log(`🗑️ Deleted ${deletedAnswers.count} existing answers`);
-        
-        // Create each new answer individually for better error handling
-        for (const answerData of result.data.answers) {
-          await tx.answer.create({
-            data: {
-              answer: sanitize(answerData.answer),
-              correct: answerData.correct,
-              questionId: id,
-            }
-          });
+        // Create new answers if any are provided
+        if (Array.isArray(result.data.answers) && result.data.answers.length > 0) {
+          for (const answerData of result.data.answers) {
+            await tx.answer.create({
+              data: {
+                answer: sanitize(answerData.answer),
+                correct: answerData.correct,
+                questionId: id,
+              },
+            });
+          }
         }
-        
-        console.log(`✅ Created ${result.data.answers.length} new answers`);
       }
-      
-      // 3. Return the updated question with its answers
+
+      // Return the updated question with its answers and category
       return tx.question.findUnique({
         where: { id },
-        include: {
-          answers: true,
-          category: true
-        }
+        include: { answers: true, category: true },
       });
     });
-    
+
     console.log(`✅ Question ${id} update complete:`, JSON.stringify(updatedQuestion, null, 2));
     return c.json(updatedQuestion, 200);
   } catch (error) {
     console.error(`❌ Error updating question:`, error);
-    
     if (error.message === 'Category not found') {
       return c.json({ error: 'Category not found' }, 400);
     }
-    
-    if (error.code === 'P2025') {
+    if ((error as any).code === 'P2025') {
       return c.json({ error: 'Question not found' }, 404);
     }
-    
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 });
