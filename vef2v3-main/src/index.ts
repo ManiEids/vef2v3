@@ -15,8 +15,12 @@ const app = new Hono();
 // Middleware
 app.use('*', logger());
 // Add CORS middleware
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : ['https://vef2v4-seven.vercel.app', 'http://localhost:3000'];
+
 app.use('*', cors({
-  origin: ['https://vef2v4-seven.vercel.app', 'http://localhost:3000'], // Add your frontend URL and localhost for development
+  origin: allowedOrigins,
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
   exposeHeaders: ['Content-Length', 'X-Requested-With'],
@@ -391,7 +395,7 @@ app.delete('/question/:id', async (c) => {
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 });
-
+ss.env.PORT || 3000;
 export default app;
 
 // Keyra þjón
