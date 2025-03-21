@@ -1,0 +1,39 @@
+{
+  "name": "vef2-v3",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Web API for quiz application",
+  "main": "dist/src/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/src/index.js",
+    "dev": "tsx watch src/index.ts",
+    "migrate": "prisma migrate deploy",
+    "seed": "node dist/prisma/seed.js",
+    "postinstall": "prisma generate",
+    "test": "echo \"No tests configured\" && exit 0",
+    "lint": "eslint . --ext .ts || true"
+  },
+  "dependencies": {
+    "@hono/cors": "^0.1.0",
+    "@hono/node-server": "^1.8.6",
+    "@prisma/client": "^5.10.0",
+    "@types/node": "^20.11.17",
+    "hono": "^4.1.2",
+    "xss": "^1.0.14",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.0",
+    "eslint": "^8.56.0",
+    "prisma": "^5.10.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "prisma": {
+    "seed": "node dist/prisma/seed.js"
+  }
+}
