@@ -325,6 +325,9 @@ app.patch('/question/:id', async (c) => {
     }
 
     const body = await c.req.json();
+    // Log the full request body to help debug
+    console.log(`✏️ Update question ${id} - Request body:`, body);
+    
     const result = questionSchema.partial().safeParse(body);
     if (!result.success) {
       return c.json({ error: 'Invalid data', details: result.error.format() }, 400);
@@ -335,7 +338,9 @@ app.patch('/question/:id', async (c) => {
       data['question'] = sanitize(result.data.question);
     }
     if (result.data.categoryId) {
-      const categoryExists = await prisma.category.findUnique({ where: { id: result.data.categoryId } });
+      const categoryExists = await prisma.category.findUnique({ 
+        where: { id: result.data.categoryId } 
+      });
       if (!categoryExists) {
         return c.json({ error: 'Category not found' }, 400);
       }
@@ -343,6 +348,7 @@ app.patch('/question/:id', async (c) => {
     }
     
     // Update question's basic fields first
+    console.log(`⏳ Updating question ${id} basic fields:`, data);
     let updatedQuestion = await prisma.question.update({
       where: { id },
       data,
@@ -350,31 +356,49 @@ app.patch('/question/:id', async (c) => {
     });
     
     // Handle answer updates if provided in the request
-    if (result.data.answers) {
+    if (result.data.answers && Array.isArray(result.data.answers)) {
+      console.log(`⏳ Updating ${result.data.answers.length} answers for question ${id}`);
+      
+      // First get existing answers to log what's being deleted
+      const existingAnswers = await prisma.answer.findMany({
+        where: { questionId: id }
+      });
+      console.log(`🗑️ Deleting ${existingAnswers.length} existing answers for question ${id}`);
+      
       // Delete all existing answers for this question
-      await prisma.answer.deleteMany({ where: { questionId: id } });
-      // Create new answers from the provided data
-      const newAnswers = await Promise.all(
-        result.data.answers.map(async (ans) => {
-          return await prisma.answer.create({
-            data: {
-              answer: sanitize(ans.answer),
-              correct: ans.correct,
-              questionId: id,
-            },
-          });
-        })
-      );
-      // Merge the new answers into the updated question object
-      updatedQuestion = { ...updatedQuestion, answers: newAnswers };
+      await prisma.answer.deleteMany({
+        where: { questionId: id }
+      });
+      
+      // Create new answers with explicit questionId
+      const newAnswersData = result.data.answers.map(ans => ({
+        answer: sanitize(ans.answer),
+        correct: ans.correct,
+        questionId: id
+      }));
+      
+      console.log(`✏️ Creating ${newAnswersData.length} new answers for question ${id}`);
+      
+      // Use createMany for better performance and simpler code
+      await prisma.answer.createMany({
+        data: newAnswersData
+      });
+      
+      // Load the complete updated question with new answers
+      updatedQuestion = await prisma.question.findUnique({
+        where: { id },
+        include: { answers: true }
+      });
+      
+      console.log(`✅ Question ${id} successfully updated with new answers`);
     }
     
     return c.json(updatedQuestion, 200);
   } catch (error) {
+    console.error(`❌ Error updating question:`, error);
     if ((error as any).code === 'P2025') {
       return c.json({ error: 'Question not found' }, 404);
     }
-    console.error('Error updating question:', error);
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 });
