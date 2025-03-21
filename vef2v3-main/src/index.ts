@@ -28,6 +28,14 @@ app.use('*', cors({
   credentials: true,
 }));
 
+// Add this before your routes
+app.use('*', async (c, next) => {
+  console.log(`Request from: ${c.req.header('Origin') || 'Unknown origin'}`);
+  console.log(`Request path: ${c.req.path}`);
+  console.log(`Request method: ${c.req.method}`);
+  await next();
+});
+
 // Skilgreiningar
 const categorySchema = z.object({
   title: z.string().min(1),
@@ -388,13 +396,24 @@ app.delete('/question/:id', async (c) => {
       if (error.code === 'P2025') {
         return c.json({ error: 'Question not found' }, 404);
       }
-      throw error;
-    }
-  } catch (error) {
+      throw error;endpoint for testings.env.PORT || 3000;
+    }app.get('/ping', (c) => {export default app;
+  } catch (error) {on({
     console.error('Error deleting question:', error);
     return c.json({ error: 'Internal Server Error' }, 500);
-  }
-});
+  }s: 'enabled',
+});Date().toISOString()
+ss.env.PORT || 3000;
+export default app;
+
+
+
+
+
+
+
+
+});  port,  fetch: app.fetch,serve({console.log(`Server is running on port ${port}`);const port = 3000;// Keyra þjón
 ss.env.PORT || 3000;
 export default app;
 
