@@ -326,49 +326,54 @@ app.patch('/question/:id', async (c) => {
 
     const body = await c.req.json();
     const result = questionSchema.partial().safeParse(body);
-
     if (!result.success) {
       return c.json({ error: 'Invalid data', details: result.error.format() }, 400);
     }
-
-    // Sía gögn
-    const { question, categoryId } = result.data;
-    const data = {};
-
-    if (question) {
-      data['question'] = sanitize(question);
+    
+    const data: any = {};
+    if (result.data.question) {
+      data['question'] = sanitize(result.data.question);
     }
-
-    if (categoryId) {
-      // Athuga flokk
-      const categoryExists = await prisma.category.findUnique({
-        where: { id: categoryId },
-      });
-
+    if (result.data.categoryId) {
+      const categoryExists = await prisma.category.findUnique({ where: { id: result.data.categoryId } });
       if (!categoryExists) {
         return c.json({ error: 'Category not found' }, 400);
       }
-
-      data['categoryId'] = categoryId;
+      data['categoryId'] = result.data.categoryId;
     }
-
-    try {
-      const updatedQuestion = await prisma.question.update({
-        where: { id },
-        data,
-        include: {
-          answers: true,
-        },
-      });
-
-      return c.json(updatedQuestion, 200);
-    } catch (error) {
-      if (error.code === 'P2025') {
-        return c.json({ error: 'Question not found' }, 404);
-      }
-      throw error;
+    
+    // Update question's basic fields first
+    let updatedQuestion = await prisma.question.update({
+      where: { id },
+      data,
+      include: { answers: true },
+    });
+    
+    // Handle answer updates if provided in the request
+    if (result.data.answers) {
+      // Delete all existing answers for this question
+      await prisma.answer.deleteMany({ where: { questionId: id } });
+      // Create new answers from the provided data
+      const newAnswers = await Promise.all(
+        result.data.answers.map(async (ans) => {
+          return await prisma.answer.create({
+            data: {
+              answer: sanitize(ans.answer),
+              correct: ans.correct,
+              questionId: id,
+            },
+          });
+        })
+      );
+      // Merge the new answers into the updated question object
+      updatedQuestion = { ...updatedQuestion, answers: newAnswers };
     }
+    
+    return c.json(updatedQuestion, 200);
   } catch (error) {
+    if ((error as any).code === 'P2025') {
+      return c.json({ error: 'Question not found' }, 404);
+    }
     console.error('Error updating question:', error);
     return c.json({ error: 'Internal Server Error' }, 500);
   }
@@ -396,26 +401,13 @@ app.delete('/question/:id', async (c) => {
       if (error.code === 'P2025') {
         return c.json({ error: 'Question not found' }, 404);
       }
-      throw error;endpoint for testings.env.PORT || 3000;
-    }app.get('/ping', (c) => {export default app;
-  } catch (error) {on({
+      throw error;
+    }
+  } catch (error) {
     console.error('Error deleting question:', error);
     return c.json({ error: 'Internal Server Error' }, 500);
-  }s: 'enabled',
-});Date().toISOString()
-ss.env.PORT || 3000;
-export default app;
-
-
-
-
-
-
-
-
-});  port,  fetch: app.fetch,serve({console.log(`Server is running on port ${port}`);const port = 3000;// Keyra þjón
-ss.env.PORT || 3000;
-export default app;
+  }
+});
 
 // Keyra þjón
 const port = 3000;
